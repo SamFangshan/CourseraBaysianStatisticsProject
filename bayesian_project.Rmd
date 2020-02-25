@@ -1,0 +1,222 @@
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+library(BAS)
+library(tidyverse)
+```
+
+### Load data
+
+Make sure your data and R Markdown files are in the same directory. When loaded
+your data file will be called `movies`. Delete this note when before you submit 
+your work. 
+
+```{r load-data}
+load("movies.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data
+The observations in the sample are collected from movie infomation from [Rotten Tomatoes](https://www.rottentomatoes.com/) and [IMDB](https://www.imdb.com/) based on a random sample of movies. Random sampling ensures that the sample is representative of the population, which means that any conclusions drawn from the sample is generalizable to the population.
+
+* * *
+
+## Part 2: Data manipulation
+
+```{r data manipulation}
+movies <- movies %>% mutate(feature_film = ifelse(title_type == 'Feature Film', 'yes', 'no'),
+                            drama = ifelse(genre == 'Drama', 'yes', 'no'),
+                            mpaa_rating_R = ifelse(mpaa_rating == 'R', 'yes', 'no'),
+                            oscar_season = ifelse(thtr_rel_month >= 10, 'yes', 'no'),
+                            summer_season = ifelse(between(thtr_rel_month, 5, 8), 'yes', 'no'))
+```
+
+* * *
+
+## Part 3: Exploratory data analysis
+
+```{r}
+movies %>%
+  filter(feature_film == 'yes') %>%
+  summarise(mean_feature = mean(audience_score), sd_feature = sd(audience_score), n_feature = n())
+movies %>%
+  filter(feature_film == 'no') %>%
+  summarise(mean_no_feature = mean(audience_score), sd_no_feature = sd(audience_score), n_no_feature = n())
+```
+Statistical summaries for feature films and non-feature films are shown as above. Non-feature films seem to have a much higher mean `audience_score` than feature films.
+```{r}
+ggplot(movies, aes(x = feature_film, y = audience_score)) +
+  geom_boxplot()
+```
+Paired box plots for feature films and non-feature films are plotted as above. In addition to difference in mean `audience_score`, this plot also shows a more concentrated distribution for non-feature films. There are two outliers in non-feature films, while no outlier is found for feature films.
+
+
+
+
+```{r}
+movies %>%
+  filter(drama == 'yes') %>%
+  summarise(mean_drama = mean(audience_score), sd_drama = sd(audience_score), n_drama = n())
+movies %>%
+  filter(drama == 'no') %>%
+  summarise(mean_no_drama = mean(audience_score), sd_no_drama = sd(audience_score), n_no_drama = n())
+```
+Statistical summaries for dramas and non-dramas are shown as above. While the difference in mean `audience_score` between the two types is not obvious, dramas seem to have a higher average audience rating.
+```{r}
+ggplot(movies, aes(x = drama, y = audience_score)) +
+  geom_boxplot()
+```
+Paired box plots for dramas and non-dramas are plotted as above. Non-dramas seem to have a higher inter-quartile range.
+
+
+
+
+```{r}
+movies %>%
+  filter(mpaa_rating_R == 'yes') %>%
+  summarise(mean_R = mean(audience_score), sd_R = sd(audience_score), n_R = n())
+movies %>%
+  filter(mpaa_rating_R == 'no') %>%
+  summarise(mean_no_R = mean(audience_score), sd_no_R = sd(audience_score), n_no_R = n())
+```
+Statistical summaries for R-rated films and non-R-rated films are shown as above. The distributions for both types of films don't differ too much.
+```{r}
+ggplot(movies, aes(x = mpaa_rating_R, y = audience_score)) +
+  geom_boxplot()
+```
+Paired box plots for R-rated films and non-R-rated films are plotted as above.
+
+
+
+
+```{r}
+movies %>%
+  filter(oscar_season == 'yes') %>%
+  summarise(mean_oscar = mean(audience_score), sd_oscar = sd(audience_score), n_oscar = n())
+movies %>%
+  filter(oscar_season == 'no') %>%
+  summarise(mean_no_oscar = mean(audience_score), sd_no_oscar = sd(audience_score), n_no_oscar = n())
+```
+Statistical summaries for films released in Oscar season and films not released in Oscar season are shown as above. Again, the distributions of the two types of films do not seem to differ significantly.
+```{r}
+ggplot(movies, aes(x = oscar_season, y = audience_score)) +
+  geom_boxplot()
+```
+Paired box plots for films released in Oscar season and films not released in Oscar season are plotted as above.
+
+
+
+
+```{r}
+movies %>%
+  filter(summer_season == 'yes') %>%
+  summarise(mean_summer = mean(audience_score), sd_summer = sd(audience_score), n_summer = n())
+movies %>%
+  filter(summer_season == 'no') %>%
+  summarise(mean_no_summer = mean(audience_score), sd_no_summer = sd(audience_score), n_no_summer = n())
+```
+Statistical summaries for films released in summer and films not released in the summer are shown as above. Whether or not a film is released in summer does not seem to influence the `audience_score` for the film too much.
+```{r}
+ggplot(movies, aes(x = summer_season, y = audience_score)) +
+  geom_boxplot()
+```
+Paired box plots for films released in summer and films not released in the summer are plotted as above.
+* * *
+
+## Part 4: Modeling
+First, we need to convert categorical labels to numerical values of 0's and 1's, with 0 representing "no" and 1 representing "yes".
+```{r}
+# variable numericalization
+movies <- movies %>% mutate(feature_film = ifelse(title_type == 'Feature Film', 1, 0),
+                            drama = ifelse(genre == 'Drama', 1, 0),
+                            mpaa_rating_R = ifelse(mpaa_rating == 'R', 1, 0),
+                            oscar_season = ifelse(thtr_rel_month >= 10, 1, 0),
+                            summer_season = ifelse(5 <= thtr_rel_month && thtr_rel_month <= 8, 1, 0),
+                            best_pic_nom = ifelse(best_pic_nom == 'yes', 1, 0),
+                            best_pic_win = ifelse(best_pic_win == 'yes', 1, 0),
+                            best_actor_win = ifelse(best_actor_win == 'yes', 1, 0),
+                            best_actress_win = ifelse(best_actress_win == 'yes', 1, 0),
+                            best_dir_win = ifelse(best_dir_win == 'yes', 1, 0),
+                            top200_box = ifelse(top200_box == 'yes', 1, 0))
+```
+### Model Selection
+We are going to use Bayesian model averaging in order to account for the inherent uncertainty among the diffrent models. This way, we will average multiple models to ontain posteriors of coefficients and predictions for new data.
+Because there are in total $2^{16} = 65536$ models to explore, we should choose Markov Chain Monte Carlo to explore the model space.
+```{r}
+set.seed(0)
+m_movies_score <- bas.lm(audience_score ~ feature_film+drama+runtime+mpaa_rating_R+thtr_rel_year+
+                      oscar_season+summer_season+imdb_rating+imdb_num_votes+critics_score+
+                      best_pic_nom+best_pic_win+best_actor_win+best_actress_win+best_dir_win+
+                      top200_box, data = na.omit(movies),
+                   prior = "ZS-null", 
+                   modelprior = uniform(),
+                   method = "MCMC")
+```
+The following is a summary of the top few models.
+```{r}
+round(summary(m_movies_score), 3)
+```
+
+```{r}
+image(m_movies_score, rotate = F)
+```
+It is very obvious that `critics_score` and `imdb_rating` are the top 2 most important variables for predicting a movie's `audience_score`.
+
+### Diagnostics
+Now we are going to run some diagnostics on the linear model we just obtained.
+```{r}
+diagnostics(m_movies_score)
+```
+By looking at this diagnostic plot, we can determine whether we have run the MCMC exploration long enough so that the posterior inclusion probability (pip) has converged. Each point in the plot represents a posterior inclusion probability for one variable. As we can see from the plot, the renormalized posterior inclusion probability (x-axis) and the posterior inclusion probability (y-axis) of each coefficient are in close agreement. Therefore, we can conclude that we have already run enough number of MCMC exploration iterations.
+
+```{r}
+plot(m_movies_score, which = 1, add.smooth = F)
+```
+As we can see from this residual plot, there are 3 outliers. Although the residuals are somewhat clustered in some parts of the graph, the distribution of residuals is still roughly random overall.
+
+```{r}
+plot(m_movies_score, which = 2, add.smooth = F)
+```
+We discovered about 4000 models, and the cumulative probability almost levels up when we have explored 3000 models.
+
+```{r}
+plot(m_movies_score, which = 3)
+```
+This is a plot of model dimension versus the log of the marginal likelihood. We can see that any models with dimension larger than 2 have fairly high log marginal likelihood.
+
+```{r}
+plot(m_movies_score, which = 4)
+```
+As noted before, the `critics_score` and `imdb_rating` are the two mosting important variables for making the prediction. But the `runtime` of the movie plays a big role in prediction as well.
+
+### Interpretation of Coefficients
+```{r}
+coefficients(m_movies_score)
+```
+On average, `drama`, `imdb_rating`, `imdb_num_votes`, `critics_score`, `best_pic_nom`, `best_pic_nom`, and `top200_box` are positively correlated with `audience_score`; `summer_session` does not have correlation with `audience_score`; the rest of the variables all have negative correlation with `audience_score`.
+* * *
+
+## Part 5: Prediction
+We are going to predict the `audience_score` of Captain America: Civil War.
+```{r}
+captain_america_3 <- data.frame(feature_film = 0, drama = 0, runtime = 147, mpaa_rating_R = 0, thtr_rel_year = 2016, oscar_season = 0, summer_season = 1, imdb_rating = 7.8, imdb_num_votes = 589113, critics_score = 91, best_pic_nom = 0, best_pic_win = 0, best_actor_win = 1, best_actress_win = 1, best_dir_win = 0, top200_box = 1)
+```
+
+```{r}
+round(predict(m_movies_score, captain_america_3, estimator = "BMA")$fit, 0)
+```
+The predicted `audience_score` for Captain America: Civil War is 83.
+
+* * *
+
+## Part 6: Conclusion
+We have obtained a fairly good linear model for making predictions on the `audience_score` of a movie. A large dimension of a model is not necessarily an indicator of the goodness of the model. A linear model with a few powerful predictor variables sometimes can already do a good job in making predictions.
+The shortcoming of my current study is that I have not tried building a linear model with different prior probability distributions, which may make my analysis not wholistic enough.
